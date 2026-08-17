@@ -1,0 +1,28 @@
+env: "local"
+game:
+  min_players: 4
+  max_players: 10
+
+  mafia:
+    - max_players: 6
+      count: 1
+
+    - max_players: 10
+      count: 2
+  roles:
+    doctor:
+      min_players: 4
+      count: 1
+
+    detective:
+      min_players: 5
+      count: 1
+
+    beauty:
+      min_players: 4
+      count: 1
+  timers:
+    lobby: 300s
+    night: 120s
+    discussion: 120s
+    voting: 30s

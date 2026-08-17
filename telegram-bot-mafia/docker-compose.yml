@@ -1,0 +1,14 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    stop_grace_period: 15s
+    env_file:
+      - .env
+    environment:
+      CONFIG_PATH: /app/config/prod.yaml
+      BOT_TOKEN: ${BOT_TOKEN}
+    volumes:
+      - ./config/prod.yaml:/app/config/prod.yaml:ro
