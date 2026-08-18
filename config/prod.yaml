@@ -25,4 +25,4 @@ game:
     lobby: 300s
     night: 120s
     discussion: 120s
-    voting: 30s
+    voting: 60s

@@ -23,8 +23,8 @@ func TestPlayerLabel(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if got := playerLabel(test.player); got != test.want {
-				t.Fatalf("playerLabel() = %q, want %q", got, test.want)
+			if got := PlayerLabel(test.player); got != test.want {
+				t.Fatalf("PlayerLabel() = %q, want %q", got, test.want)
 			}
 		})
 	}
@@ -33,23 +33,23 @@ func TestPlayerLabel(t *testing.T) {
 func TestDisplayName(t *testing.T) {
 	t.Parallel()
 
-	got := displayName(models.Player{ID: 42, FirstName: "Дарья", Username: "darya"})
+	got := DisplayName(models.Player{ID: 42, FirstName: "Дарья", Username: "darya"})
 	want := `<a href="tg://user?id=42">Дарья</a>`
 	if got != want {
-		t.Fatalf("displayName() = %q, want %q", got, want)
+		t.Fatalf("DisplayName() = %q, want %q", got, want)
 	}
 
-	got = displayName(models.Player{ID: 7, FirstName: `A<B>&"C`})
+	got = DisplayName(models.Player{ID: 7, FirstName: `A<B>&"C`})
 	want = `<a href="tg://user?id=7">A&lt;B&gt;&amp;&#34;C</a>`
 	if got != want {
-		t.Fatalf("displayName() escaped = %q, want %q", got, want)
+		t.Fatalf("DisplayName() escaped = %q, want %q", got, want)
 	}
 }
 
 func TestLobbyTextUsesFirstNameLinks(t *testing.T) {
 	t.Parallel()
 
-	text := lobbyText(models.Game{
+	text := LobbyText(models.Game{
 		CreatorID: 1,
 		Players: []models.Player{
 			{ID: 1, FirstName: "Николай", Username: "nikolay"},
@@ -58,13 +58,13 @@ func TestLobbyTextUsesFirstNameLinks(t *testing.T) {
 		Settings: models.GameSettings{MaxPlayers: 10},
 	})
 	if !strings.Contains(text, `<a href="tg://user?id=1">Николай</a>`) {
-		t.Fatalf("lobbyText missing Николай link\n%s", text)
+		t.Fatalf("LobbyText missing Николай link\n%s", text)
 	}
 	if !strings.Contains(text, `<a href="tg://user?id=2">Дарья</a>`) {
-		t.Fatalf("lobbyText missing Дарья link\n%s", text)
+		t.Fatalf("LobbyText missing Дарья link\n%s", text)
 	}
 	if strings.Contains(text, "@nikolay") || strings.Contains(text, "@darya") {
-		t.Fatalf("lobbyText still shows usernames:\n%s", text)
+		t.Fatalf("LobbyText still shows usernames:\n%s", text)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestVoteKeyboardSkipsAlibiPlayer(t *testing.T) {
 		{ID: 2, FirstName: "Дарья", Alive: true},
 		{ID: 3, FirstName: "Кирилл", Alive: true},
 	}
-	keyboard := voteKeyboard(10, 1, 2, players)
+	keyboard := VoteKeyboard(10, 1, 2, players)
 	if len(keyboard.InlineKeyboard) != 1 {
 		t.Fatalf("got %d buttons, want 1", len(keyboard.InlineKeyboard))
 	}
@@ -95,12 +95,12 @@ func TestAlibiText(t *testing.T) {
 			{ID: 2, FirstName: "Дарья", Alive: true},
 		},
 	}
-	got := alibiText(game)
+	got := AlibiText(game)
 	want := `💋 У <a href="tg://user?id=2">Дарья</a> алиби. Сегодня за этого игрока нельзя голосовать.`
 	if got != want {
-		t.Fatalf("alibiText() = %q, want %q", got, want)
+		t.Fatalf("AlibiText() = %q, want %q", got, want)
 	}
-	if alibiText(models.Game{}) != "" {
-		t.Fatal("alibiText() for empty game should be empty")
+	if AlibiText(models.Game{}) != "" {
+		t.Fatal("AlibiText() for empty game should be empty")
 	}
 }

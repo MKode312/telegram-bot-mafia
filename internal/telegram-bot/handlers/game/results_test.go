@@ -24,27 +24,27 @@ func TestFormatResults(t *testing.T) {
 		},
 	}
 
-	text := formatResults(results)
+	text := FormatResults(results)
 	want := strings.Join([]string{
 		"Игра завершена!",
 		"Победили: Мирные жители",
 		"",
 		"Победители:",
-		"    " + profileLink(1, "Дашулька") + " - " + resultRoleName(models.RoleDoctor),
-		"    " + profileLink(2, "Николай") + " - " + resultRoleName(models.RoleCivilian),
-		"    " + profileLink(3, "Кирюша") + " - " + resultRoleName(models.RoleCivilian),
-		"    " + profileLink(4, "Чумабой") + " - " + resultRoleName(models.RoleDetective),
-		"    " + profileLink(5, "Олеся") + " - " + resultRoleName(models.RoleCivilian),
+		"    " + profileLink(1, "Дашулька") + " - " + ResultRoleName(models.RoleDoctor),
+		"    " + profileLink(2, "Николай") + " - " + ResultRoleName(models.RoleCivilian),
+		"    " + profileLink(3, "Кирюша") + " - " + ResultRoleName(models.RoleCivilian),
+		"    " + profileLink(4, "Чумабой") + " - " + ResultRoleName(models.RoleDetective),
+		"    " + profileLink(5, "Олеся") + " - " + ResultRoleName(models.RoleCivilian),
 		"",
 		"Остальные участники:",
-		"    " + profileLink(6, "Anastasia") + " - " + resultRoleName(models.RoleCivilian),
-		"    " + profileLink(7, "Данила") + " - " + resultRoleName(models.RoleMafia),
+		"    " + profileLink(6, "Anastasia") + " - " + ResultRoleName(models.RoleCivilian),
+		"    " + profileLink(7, "Данила") + " - " + ResultRoleName(models.RoleMafia),
 		"",
 		"Игра длилась: 7 мин. 23 сек.",
 	}, "\n")
 
 	if text != want {
-		t.Fatalf("formatResults() mismatch\nwant:\n%s\n\ngot:\n%s", want, text)
+		t.Fatalf("FormatResults() mismatch\nwant:\n%s\n\ngot:\n%s", want, text)
 	}
 }
 

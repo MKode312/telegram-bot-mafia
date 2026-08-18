@@ -73,7 +73,7 @@ func (h *Handler) create(ctx context.Context, b *bot.Bot, update *telegrammodels
 		return
 	}
 	h.log.Info("game created by Telegram command", "chat_id", chatID, "user_id", userID, "lobby_duration", game.Settings.LobbyDuration)
-	message := common.SendWithKeyboard(ctx, b, h.log, chatID, lobbyText(game), lobbyKeyboard(chatID))
+	message := common.SendWithKeyboard(ctx, b, h.log, chatID, LobbyText(game), lobbyKeyboard(chatID))
 	if message != nil {
 		h.setLobbyMessage(chatID, message.ID)
 	}
@@ -105,7 +105,7 @@ func (h *Handler) leave(ctx context.Context, b *bot.Bot, update *telegrammodels.
 	}
 	h.updateLobby(ctx, b, game)
 	if wasCreator {
-		common.Send(ctx, b, h.log, chatID, fmt.Sprintf("👑 Создатель покинул лобби. Новый создатель: %s.", displayName(creatorOf(game))))
+		common.Send(ctx, b, h.log, chatID, fmt.Sprintf("👑 Создатель покинул лобби. Новый создатель: %s.", DisplayName(creatorOf(game))))
 	}
 }
 
@@ -235,7 +235,7 @@ func (h *Handler) voteCallback(ctx context.Context, b *bot.Bot, update *telegram
 	h.answerCallback(ctx, b, query.ID, "✅ Голос принят.", false)
 	h.clearPlayerActionKeyboards(ctx, b, chatID, query.From.ID)
 	if target, ok := playerByID(game, targetID); ok {
-		common.Send(ctx, b, h.log, query.From.ID, "🗳️ Вы проголосовали за: "+displayName(target)+".")
+		common.Send(ctx, b, h.log, query.From.ID, "🗳️ Вы проголосовали за: "+DisplayName(target)+".")
 	}
 	if game.Phase == models.PhaseNight || game.Phase == models.PhaseFinished {
 		h.onVotingResolved(ctx, b, game)
@@ -430,14 +430,15 @@ func parseCallback(data, prefix string) (chatID, targetID int64, err error) {
 	return chatID, targetID, nil
 }
 
-func voteKeyboard(chatID, voterID, alibiID int64, players []models.Player) *telegrammodels.InlineKeyboardMarkup {
+// VoteKeyboard lists living players except the voter and the alibi target.
+func VoteKeyboard(chatID, voterID, alibiID int64, players []models.Player) *telegrammodels.InlineKeyboardMarkup {
 	keyboard := make([][]telegrammodels.InlineKeyboardButton, 0, len(players))
 	for _, player := range players {
 		if !player.Alive || player.ID == voterID || player.ID == alibiID {
 			continue
 		}
 		keyboard = append(keyboard, []telegrammodels.InlineKeyboardButton{{
-			Text:         playerLabel(player),
+			Text:         PlayerLabel(player),
 			CallbackData: fmt.Sprintf("vote:%d:%d", chatID, player.ID),
 		}})
 	}
@@ -531,7 +532,7 @@ func (h *Handler) notifyMafiaPartnerChoice(ctx context.Context, b *bot.Bot, game
 	if !actorOK || !targetOK {
 		return
 	}
-	text := fmt.Sprintf("🔪 Напарник %s выбрал жертву: %s.", displayName(actor), displayName(target))
+	text := fmt.Sprintf("🔪 Напарник %s выбрал жертву: %s.", DisplayName(actor), DisplayName(target))
 	for _, ally := range allies {
 		common.Send(ctx, b, h.log, ally.ID, text)
 	}
@@ -544,7 +545,7 @@ func mafiaAlliesText(h *Handler, chatID, playerID int64) string {
 	}
 	names := make([]string, 0, len(allies))
 	for _, ally := range allies {
-		names = append(names, displayName(ally))
+		names = append(names, DisplayName(ally))
 	}
 	if len(names) == 1 {
 		return "\n\n🤝 Ваш союзник: " + names[0] + "."
@@ -576,7 +577,7 @@ func nightKeyboard(chatID int64, targets []models.Player, actionType string) *te
 		if actionType != "" {
 			callback = fmt.Sprintf("night:%d:%d:%s", chatID, player.ID, actionType)
 		}
-		keyboard = append(keyboard, []telegrammodels.InlineKeyboardButton{{Text: playerLabel(player), CallbackData: callback}})
+		keyboard = append(keyboard, []telegrammodels.InlineKeyboardButton{{Text: PlayerLabel(player), CallbackData: callback}})
 	}
 	return &telegrammodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
@@ -587,10 +588,11 @@ func lobbyKeyboard(chatID int64) *telegrammodels.InlineKeyboardMarkup {
 	}}}}
 }
 
-func lobbyText(game models.Game) string {
+// LobbyText is the group lobby message with player name links.
+func LobbyText(game models.Game) string {
 	players := make([]string, 0, len(game.Players))
 	for index, player := range game.Players {
-		line := fmt.Sprintf("    %d. %s", index+1, displayName(player))
+		line := fmt.Sprintf("    %d. %s", index+1, DisplayName(player))
 		if player.ID == game.CreatorID {
 			line += " 👑"
 		}
@@ -610,7 +612,7 @@ func (h *Handler) updateLobby(ctx context.Context, b *bot.Bot, game models.Game)
 	if _, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		ChatID:      game.ChatID,
 		MessageID:   messageID,
-		Text:        lobbyText(game),
+		Text:        LobbyText(game),
 		ParseMode:   telegrammodels.ParseModeHTML,
 		ReplyMarkup: lobbyKeyboard(game.ChatID),
 	}); err != nil {
@@ -657,7 +659,7 @@ func (h *Handler) announceVoting(ctx context.Context, b *bot.Bot, game models.Ga
 		if !player.Alive {
 			continue
 		}
-		h.sendTrackedKeyboard(ctx, b, game.ChatID, player.ID, votingPrompt(game), voteKeyboard(game.ChatID, player.ID, game.AlibiPlayerID, game.Players))
+		h.sendTrackedKeyboard(ctx, b, game.ChatID, player.ID, votingPrompt(game), VoteKeyboard(game.ChatID, player.ID, game.AlibiPlayerID, game.Players))
 		h.log.Info("voting keyboard sent in DM", "chat_id", game.ChatID, "player_id", player.ID)
 	}
 	h.scheduleVotingTimer(ctx, b, game.ChatID, time.Until(game.EndsAt))
@@ -665,7 +667,7 @@ func (h *Handler) announceVoting(ctx context.Context, b *bot.Bot, game models.Ga
 
 func votingStartText(game models.Game) string {
 	text := "🗳️ Голосование началось. Живые игроки, проголосуйте в личных сообщениях с ботом."
-	if alibi := alibiText(game); alibi != "" {
+	if alibi := AlibiText(game); alibi != "" {
 		return text + "\n\n" + alibi
 	}
 	return text
@@ -673,13 +675,14 @@ func votingStartText(game models.Game) string {
 
 func votingPrompt(game models.Game) string {
 	text := "🗳️ Голосование началось. Выберите живого игрока кнопкой:"
-	if alibi := alibiText(game); alibi != "" {
+	if alibi := AlibiText(game); alibi != "" {
 		return text + "\n\n" + alibi
 	}
 	return text
 }
 
-func alibiText(game models.Game) string {
+// AlibiText announces who cannot be voted today, or empty if nobody has an alibi.
+func AlibiText(game models.Game) string {
 	if game.AlibiPlayerID == 0 {
 		return ""
 	}
@@ -687,7 +690,7 @@ func alibiText(game models.Game) string {
 	if !ok || !player.Alive {
 		return ""
 	}
-	return fmt.Sprintf("💋 У %s алиби. Сегодня за этого игрока нельзя голосовать.", displayName(player))
+	return fmt.Sprintf("💋 У %s алиби. Сегодня за этого игрока нельзя голосовать.", DisplayName(player))
 }
 
 func (h *Handler) onVotingResolved(ctx context.Context, b *bot.Bot, game models.Game) {
@@ -719,7 +722,7 @@ func (h *Handler) onNightResolved(ctx context.Context, b *bot.Bot, game models.G
 	}
 	if game.Phase == models.PhaseDiscussion {
 		common.Send(ctx, b, h.log, game.ChatID, "💬 Началось обсуждение. Решите, кого вы хотите повесить.")
-		if alibi := alibiText(game); alibi != "" {
+		if alibi := AlibiText(game); alibi != "" {
 			common.Send(ctx, b, h.log, game.ChatID, alibi)
 		}
 		h.scheduleDiscussionTimer(ctx, b, game.ChatID, time.Until(game.EndsAt))
@@ -753,7 +756,7 @@ func (h *Handler) sendGameResultsToPlayers(ctx context.Context, b *bot.Bot, game
 	if game.Results == nil {
 		return
 	}
-	text := formatResults(*game.Results)
+	text := FormatResults(*game.Results)
 	for _, player := range game.Players {
 		common.Send(ctx, b, h.log, player.ID, text)
 	}
@@ -1080,7 +1083,7 @@ func userError(err error) string {
 
 func formatStatus(game models.Game) string {
 	if game.Phase == models.PhaseFinished && game.Results != nil {
-		return formatResults(*game.Results)
+		return FormatResults(*game.Results)
 	}
 	var players []string
 	for _, player := range game.Players {
@@ -1088,7 +1091,7 @@ func formatStatus(game models.Game) string {
 		if player.Alive {
 			state = "●"
 		}
-		players = append(players, fmt.Sprintf("    %s %s", state, displayName(player)))
+		players = append(players, fmt.Sprintf("    %s %s", state, DisplayName(player)))
 	}
 	return fmt.Sprintf("📋 Этап: %s\n\n👥 Игроки:\n\n%s", phase(game.Phase), strings.Join(players, "\n"))
 }
@@ -1138,7 +1141,7 @@ func playerByID(game models.Game, id int64) (models.Player, bool) {
 }
 
 func playerWithRole(player models.Player) string {
-	return fmt.Sprintf("%s (%s)", displayName(player), roleName(player.Role))
+	return fmt.Sprintf("%s (%s)", DisplayName(player), roleName(player.Role))
 }
 
 func (h *Handler) announceNight(ctx context.Context, b *bot.Bot, game models.Game, prefix string) {
@@ -1153,7 +1156,7 @@ func alivePlayersText(game models.Game) string {
 	names := make([]string, 0, len(game.Players))
 	for _, player := range game.Players {
 		if player.Alive {
-			names = append(names, "    "+displayName(player))
+			names = append(names, "    "+DisplayName(player))
 		}
 	}
 	if len(names) == 0 {
@@ -1162,7 +1165,8 @@ func alivePlayersText(game models.Game) string {
 	return "💚 Живые игроки:\n\n" + strings.Join(names, "\n")
 }
 
-func formatResults(results models.GameResults) string {
+// FormatResults is the end-of-game summary sent to the group and players.
+func FormatResults(results models.GameResults) string {
 	winnerTeam := "Мирные жители"
 	if results.Winner == models.TeamMafia {
 		winnerTeam = "Мафия"
@@ -1210,10 +1214,11 @@ func isResultWinner(player models.Player, winner models.Team) bool {
 }
 
 func resultPlayerLine(player models.Player) string {
-	return fmt.Sprintf("    %s - %s", displayName(player), resultRoleName(player.Role))
+	return fmt.Sprintf("    %s - %s", DisplayName(player), ResultRoleName(player.Role))
 }
 
-func resultRoleName(role models.Role) string {
+// ResultRoleName is the role label used in the game-over player list.
+func ResultRoleName(role models.Role) string {
 	switch role {
 	case models.RoleMafia:
 		return "🤵🏻 Мафия"
@@ -1250,7 +1255,8 @@ func playerFromTelegram(user telegrammodels.User) models.Player {
 	}
 }
 
-func playerLabel(player models.Player) string {
+// PlayerLabel is the short display name used on buttons.
+func PlayerLabel(player models.Player) string {
 	if name := strings.TrimSpace(player.FirstName); name != "" {
 		return name
 	}
@@ -1260,8 +1266,9 @@ func playerLabel(player models.Player) string {
 	return fmt.Sprintf("Игрок %d", player.ID)
 }
 
-func displayName(player models.Player) string {
-	return fmt.Sprintf(`<a href="tg://user?id=%d">%s</a>`, player.ID, html.EscapeString(playerLabel(player)))
+// DisplayName is an HTML link to the player's Telegram profile.
+func DisplayName(player models.Player) string {
+	return fmt.Sprintf(`<a href="tg://user?id=%d">%s</a>`, player.ID, html.EscapeString(PlayerLabel(player)))
 }
 
 func playersWithoutDM(ctx context.Context, b *bot.Bot, log *slog.Logger, players []models.Player) []models.Player {
@@ -1279,7 +1286,7 @@ func playersWithoutDM(ctx context.Context, b *bot.Bot, log *slog.Logger, players
 func missingDMText(players []models.Player) string {
 	names := make([]string, 0, len(players))
 	for _, player := range players {
-		names = append(names, "    "+displayName(player))
+		names = append(names, "    "+DisplayName(player))
 	}
 	return "💬 Нельзя начать игру: эти игроки ещё не написали боту в личные сообщения:\n\n" +
 		strings.Join(names, "\n") +
